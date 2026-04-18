@@ -1,55 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pantalla Evento PRO</title>
+
+<style>
+body {
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family: Arial;
+}
+
+#enCurso {
+  text-align:center;
+  font-size:60px;
+  padding:20px;
+  background:#111;
+  border-bottom:3px solid #0f0;
+}
+
+.container {
+  display:flex;
+}
+
+.col {
+  flex:1;
+  padding:20px;
+}
+
+ul {
+  list-style:none;
+  padding:0;
+  font-size:24px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="enCurso">Cargando datos...</div>
+
+<div class="container">
+  <div class="col">
+    <h2>Preparación</h2>
+    <ul id="preparacion"></ul>
+  </div>
+
+  <div class="col">
+    <h2>Escenario</h2>
+    <ul id="escenario"></ul>
+  </div>
+
+  <div class="col">
+    <h2>Sigue</h2>
+    <ul id="sigue"></ul>
+  </div>
+</div>
+
 <script>
+
+// 🔴 PRUEBA RÁPIDA (si esto aparece, el HTML está OK)
+document.getElementById("enCurso").innerText = "Probando conexión...";
+
+// 👉 PEGA TU ID AQUÍ
 const sheetID = "TU_ID_AQUI";
+
+// URL
 const url = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv`;
 
 async function cargarDatos() {
   try {
-    const res = await fetch(url + "&t=" + new Date().getTime());
+    const res = await fetch(url + "&t=" + Date.now());
+
+    if (!res.ok) throw new Error("No conecta con Google Sheets");
+
     const text = await res.text();
+
+    if (!text || text.length < 10) throw new Error("CSV vacío");
 
     const separador = text.includes(";") ? ";" : ",";
     const filas = text.split("\n").map(f => f.split(separador));
 
-    let preparacion = [];
     let escenario = [];
-    let sigue = [];
 
     filas.slice(1).forEach(f => {
-      const col0 = (f[0] || "").trim();
       const col1 = (f[1] || "").trim();
-      const col2 = (f[2] || "").trim();
-
-      if (col0 !== "") preparacion.push(col0);
-      if (col1 !== "") escenario.push(col1);
-      if (col2 !== "") sigue.push(col2);
+      if (col1) escenario.push(col1);
     });
 
-    // 🔥 DEBUG (puedes mirar en consola si quieres)
-    console.log("ESCENARIO:", escenario);
-
-    // 🔥 EN CURSO
     document.getElementById("enCurso").innerText =
-      escenario.length > 0 ? escenario[0] : "SIN ACTIVIDAD";
+      escenario[0] || "SIN DATOS EN ESCENARIO";
 
-    pintar("preparacion", preparacion);
-    pintar("escenario", escenario);
-    pintar("sigue", sigue);
-
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
+    document.getElementById("enCurso").innerText =
+      "❌ ERROR: revisa ID o publicación";
   }
 }
 
-function pintar(id, datos) {
-  const ul = document.getElementById(id);
-  ul.innerHTML = "";
-  datos.forEach(d => {
-    const li = document.createElement("li");
-    li.textContent = d;
-    ul.appendChild(li);
-  });
-}
-
-setInterval(cargarDatos, 10000);
 cargarDatos();
+
 </script>
+
+</body>
+</html>
