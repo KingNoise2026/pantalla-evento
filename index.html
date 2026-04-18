@@ -1,128 +1,46 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Pantalla Evento PRO</title>
-
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-
-<style>
-body {
-  margin:0;
-  background:#000;
-  color:#fff;
-  font-family: Arial, sans-serif;
-}
-
-/* 🔥 EN ESCENARIO (DESTACADO) */
-#enCurso {
-  width:100%;
-  text-align:center;
-  font-size:80px;
-  font-weight:bold;
-  padding:30px 0;
-  background:#111;
-  border-bottom:4px solid #0f0;
-}
-
-/* CONTENEDOR GENERAL */
-.container {
-  display:flex;
-  height:calc(100vh - 140px);
-}
-
-/* COLUMNAS */
-.col {
-  flex:1;
-  padding:20px;
-  box-sizing:border-box;
-}
-
-h2 {
-  text-align:center;
-  margin-bottom:20px;
-}
-
-/* LISTAS */
-ul {
-  list-style:none;
-  padding:0;
-  margin:0;
-  font-size:28px;
-}
-
-li {
-  padding:10px 0;
-  border-bottom:1px solid rgba(255,255,255,0.2);
-}
-</style>
-</head>
-
-<body>
-
-<!-- 🔥 BLOQUE PRINCIPAL -->
-<div id="enCurso">Cargando...</div>
-
-<div class="container">
-  <div class="col">
-    <h2>EN PREPARACIÓN</h2>
-    <ul id="preparacion"></ul>
-  </div>
-
-  <div class="col">
-    <h2>EN ESCENARIO</h2>
-    <ul id="escenario"></ul>
-  </div>
-
-  <div class="col">
-    <h2>SIGUE</h2>
-    <ul id="sigue"></ul>
-  </div>
-</div>
-
 <script>
-// ⚠️ PON AQUÍ TU ID
 const sheetID = "TU_ID_AQUI";
-
-// formato JSON público de Google Sheets
 const url = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv`;
 
 async function cargarDatos() {
   try {
     const res = await fetch(url + "&t=" + new Date().getTime());
-    const data = await res.text();
+    const text = await res.text();
 
-    const filas = data.split("\n").map(f => f.split(","));
+    const separador = text.includes(";") ? ";" : ",";
+    const filas = text.split("\n").map(f => f.split(separador));
 
     let preparacion = [];
     let escenario = [];
     let sigue = [];
 
-    // ⚠️ ASUMIMOS:
-    // Columna 0 = Preparación
-    // Columna 1 = Escenario
-    // Columna 2 = Sigue
-
     filas.slice(1).forEach(f => {
-      if (f[0]) preparacion.push(f[0]);
-      if (f[1]) escenario.push(f[1]);
-      if (f[2]) sigue.push(f[2]);
+      const col0 = (f[0] || "").trim();
+      const col1 = (f[1] || "").trim();
+      const col2 = (f[2] || "").trim();
+
+      if (col0 !== "") preparacion.push(col0);
+      if (col1 !== "") escenario.push(col1);
+      if (col2 !== "") sigue.push(col2);
     });
 
-    // 🔥 MOSTRAR EN CURSO (primer elemento de escenario)
-    document.getElementById("enCurso").innerText = escenario[0] || "SIN ACTIVIDAD";
+    // 🔥 DEBUG (puedes mirar en consola si quieres)
+    console.log("ESCENARIO:", escenario);
 
-    // LISTAS
-    pintarLista("preparacion", preparacion);
-    pintarLista("escenario", escenario);
-    pintarLista("sigue", sigue);
+    // 🔥 EN CURSO
+    document.getElementById("enCurso").innerText =
+      escenario.length > 0 ? escenario[0] : "SIN ACTIVIDAD";
+
+    pintar("preparacion", preparacion);
+    pintar("escenario", escenario);
+    pintar("sigue", sigue);
 
   } catch (e) {
-    console.error("Error cargando datos", e);
+    console.error(e);
   }
 }
 
-function pintarLista(id, datos) {
+function pintar(id, datos) {
   const ul = document.getElementById(id);
   ul.innerHTML = "";
   datos.forEach(d => {
@@ -132,12 +50,6 @@ function pintarLista(id, datos) {
   });
 }
 
-// 🔄 refresca cada 10 segundos
 setInterval(cargarDatos, 10000);
-
-// primera carga
 cargarDatos();
 </script>
-
-</body>
-</html>
