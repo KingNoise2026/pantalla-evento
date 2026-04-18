@@ -2,76 +2,80 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Pantalla Evento LIVE - TEST</title>
+<title>Pantalla Evento LIVE</title>
 
 <style>
-
-/* 🔥 CAMBIO VISUAL FUERTE PARA TEST */
 body {
   margin:0;
-  background:#ff00ff !important;
-  color:#00ff00;
+  background:#000;
+  color:#fff;
   font-family: Arial, sans-serif;
   text-align:center;
-}
-
-/* 🔥 BORDES PARA VER SI ESTÁ ACTUALIZANDO */
-.container {
-  display:flex;
-  flex-direction:column;
-  justify-content:space-around;
-  height:85vh;
-  border:10px solid yellow;
 }
 
 .reloj {
   font-size:120px;
   font-weight:bold;
-  color:white;
 }
 
-.bloque { padding:20px; border:5px solid white; }
+.container {
+  display:flex;
+  flex-direction:column;
+  justify-content:space-around;
+  height:85vh;
+}
+
+.bloque { padding:20px; }
 
 .titulo { font-size:55px; margin-bottom:10px; }
 
-.ahora { background:#ff0000; }
-.sigue { background:#00ff00; }
-.prep { background:#0000ff; }
+.ahora { background:#8B0000; }
+.sigue { background:#B8860B; }
+.prep { background:#1E3A8A; }
 
 .item { font-size:75px; margin:20px 0; }
 
 .hora {
   font-size:70px;
-  color:#fff;
+  color:#ccc;
   font-weight:bold;
   display:block;
+}
+
+.progress {
+  width:80%;
+  height:20px;
+  background:#333;
+  margin:10px auto;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.progress-bar {
+  height:100%;
+  background:#00ff88;
+  width:0%;
+  transition: width 1s linear;
+}
+
+.countdown {
+  font-size:40px;
+  color:#00ff88;
 }
 
 .status {
   position:fixed;
   top:10px;
-  left:10px;
-  background:black;
-  color:white;
-  padding:10px;
-  font-size:20px;
-  z-index:9999;
+  right:10px;
+  font-size:16px;
+  color:#aaa;
 }
-
 </style>
 </head>
 
 <body>
 
-<!-- 🔥 INDICADOR DE ARCHIVO ACTIVO -->
-<div class="status">
-SI VES ESTO → ESTE ARCHIVO SÍ ESTÁ CARGANDO
-</div>
-
-<!-- 🔥 TEST VISUAL -->
-<h1 style="color:white; font-size:60px;">
-ARCHIVO ACTIVO OK
-</h1>
+<div class="status" id="status">Conectando...</div>
 
 <div class="reloj" id="reloj"></div>
 
@@ -79,34 +83,38 @@ ARCHIVO ACTIVO OK
 
 <div class="bloque ahora">
 <div class="titulo">EN ESCENARIO AHORA</div>
-<div id="ahora">TEST AHORA</div>
+<div id="ahora"></div>
+<div class="progress"><div class="progress-bar" id="barra"></div></div>
+<div class="countdown" id="countdown"></div>
 </div>
 
 <div class="bloque sigue">
 <div class="titulo">SIGUE</div>
-<div id="sigue">TEST SIGUE</div>
+<div id="sigue"></div>
 </div>
 
 <div class="bloque prep">
 <div class="titulo">EN PREPARACIÓN</div>
-<div id="prep">TEST PREP</div>
+<div id="prep"></div>
 </div>
 
 </div>
+
+<button onclick="forzarUpdate()" style="position:fixed;bottom:20px;right:20px;font-size:20px;padding:10px;">
+🔄
+</button>
 
 <script>
 
-// solo reloj para validar ejecución JS
-function actualizarReloj(){
-  const now = new Date();
-  document.getElementById("reloj").innerText =
-    now.toLocaleTimeString("es-CL");
-}
+const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
 
-setInterval(actualizarReloj, 1000);
-actualizarReloj();
+const DURACION_DEFAULT = 15;
+let eventos = [];
 
-</script>
+// 🔥 carga robusta
+async function cargarEventos(){
+  try {
+    const res = await fetch(BASE_URL + "&v=" + Date.now(), { cache: "no-store" });
+    const text = await res.text();
 
-</body>
-</html>
+    const
