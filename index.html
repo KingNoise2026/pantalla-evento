@@ -97,17 +97,17 @@ body {
 
 <script>
 
-// 🔥 TU GOOGLE SHEETS
+// 🔥 GOOGLE SHEETS CSV (NUEVO LINK)
 const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
 
 const DURACION_DEFAULT = 15;
 
 let eventos = [];
 
-// 🔥 CARGA CON ANTI-CACHE
+// 🔥 CARGA MEJORADA (ANTI CACHE + FIX CSV)
 async function cargarEventos(){
   try {
-    const res = await fetch(URL + "&t=" + new Date().getTime());
+    const res = await fetch(URL + "&cache=" + Date.now());
     const text = await res.text();
 
     const filas = text.split(/\r?\n/).slice(1);
@@ -115,7 +115,8 @@ async function cargarEventos(){
     return filas.map(f=>{
       if(!f.trim()) return null;
 
-      const columnas = f.split(",");
+      // FIX IMPORTANTE: respeta comas dentro de comillas
+      const columnas = f.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
 
       return {
         inicio: columnas[0]?.replace(/"/g,"").trim(),
@@ -178,11 +179,12 @@ function actualizar(){
     let ini = horaAminutos(actuales[0].inicio);
     let fin = obtenerFin(actuales[0]);
 
+    let porcentaje = ((minutos-ini)/(fin-ini))*100;
     document.getElementById("barra").style.width =
-      ((minutos-ini)/(fin-ini))*100 + "%";
+      Math.max(0, Math.min(100, porcentaje)) + "%";
 
     document.getElementById("countdown").innerText =
-      "Termina en " + (fin-minutos) + " min";
+      "Termina en " + Math.max(0,(fin-minutos)) + " min";
   }
 }
 
@@ -201,7 +203,7 @@ async function init(){
 // reloj en tiempo real
 setInterval(actualizar, 1000);
 
-// 🔥 refresco rápido (5 seg)
+// 🔥 refresco inteligente
 setInterval(async ()=>{
   eventos = await cargarEventos();
 }, 5000);
