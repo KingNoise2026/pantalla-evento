@@ -63,7 +63,7 @@ body {
 .scroll-content {
   position:absolute;
   width:100%;
-  transition: transform 0.6s ease;
+  will-change: transform;
 }
 
 .item {
@@ -117,7 +117,8 @@ body {
 const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
 
 let eventos = [];
-let indexScroll = 0;
+let scrollY = 0;
+let velocidad = 0.4; // 👈 velocidad media REAL
 
 async function cargarEventos(){
   try {
@@ -188,30 +189,36 @@ function actualizar(){
     </div>
   `).join("");
 
+  // 🔥 DUPLICAMOS CONTENIDO PARA LOOP INFINITO
   document.getElementById("prep").innerHTML =
-    `<div class="scroll-content">${html}</div>`;
+    `<div class="scroll-content">${html + html}</div>`;
 
-  indexScroll = 0;
+  scrollY = 0;
 }
 
-function scrollPorPasos(){
+// 🔥 SCROLL CONTINUO REAL (SIN SALTOS)
+function animarScroll(){
   const cont = document.querySelector(".scroll-content");
-  if(!cont) return;
+  if(!cont){
+    requestAnimationFrame(animarScroll);
+    return;
+  }
 
-  const items = cont.children;
-  if(items.length === 0) return;
+  scrollY += velocidad;
 
-  indexScroll++;
-  if(indexScroll >= items.length) indexScroll = 0;
+  if(scrollY >= cont.scrollHeight / 2){
+    scrollY = 0;
+  }
 
-  const altura = items[0].offsetHeight + 8;
+  cont.style.transform = `translateY(-${scrollY}px)`;
 
-  cont.style.transform = `translateY(-${indexScroll * altura}px)`;
+  requestAnimationFrame(animarScroll);
 }
 
 async function init(){
   eventos = await cargarEventos();
   actualizar();
+  animarScroll();
 }
 
 setInterval(actualizarReloj, 1000);
@@ -220,8 +227,6 @@ setInterval(async ()=>{
   eventos = await cargarEventos();
   actualizar();
 }, 10000);
-
-setInterval(scrollPorPasos, 4000);
 
 setInterval(() => {
   location.reload();
