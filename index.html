@@ -11,170 +11,132 @@ body {
   margin:0;
   background:#000;
   color:#fff;
-  font-family: Arial;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
+  font-family: Arial, sans-serif;
 }
 
-.reloj { font-size:70px; text-align:center; }
-
-.container { flex:1; display:flex; flex-direction:column; }
-
-.bloque { padding:10px; text-align:center; }
-
-.ahora { background:#8B0000; flex:1; }
-.sigue { background:#B8860B; flex:0.8; }
-.prep { background:#1E3A8A; flex:1.2; display:flex; flex-direction:column; }
-
-.prep-content { flex:1; overflow:hidden; position:relative; }
-
-.scroll-content {
-  position:absolute;
+/* 🔥 EN ESCENARIO (DESTACADO) */
+#enCurso {
   width:100%;
+  text-align:center;
+  font-size:80px;
+  font-weight:bold;
+  padding:30px 0;
+  background:#111;
+  border-bottom:4px solid #0f0;
 }
 
-.item { font-size:38px; margin:8px 0; }
-.hora { font-size:26px; color:#ccc; }
+/* CONTENEDOR GENERAL */
+.container {
+  display:flex;
+  height:calc(100vh - 140px);
+}
 
-.titulo { font-size:32px; font-weight:bold; }
+/* COLUMNAS */
+.col {
+  flex:1;
+  padding:20px;
+  box-sizing:border-box;
+}
+
+h2 {
+  text-align:center;
+  margin-bottom:20px;
+}
+
+/* LISTAS */
+ul {
+  list-style:none;
+  padding:0;
+  margin:0;
+  font-size:28px;
+}
+
+li {
+  padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
 </style>
 </head>
 
 <body>
 
-<div class="reloj" id="reloj"></div>
+<!-- 🔥 BLOQUE PRINCIPAL -->
+<div id="enCurso">Cargando...</div>
 
 <div class="container">
+  <div class="col">
+    <h2>EN PREPARACIÓN</h2>
+    <ul id="preparacion"></ul>
+  </div>
 
-<div class="bloque ahora">
-<div class="titulo">EN ESCENARIO</div>
-<div id="ahora"></div>
-</div>
+  <div class="col">
+    <h2>EN ESCENARIO</h2>
+    <ul id="escenario"></ul>
+  </div>
 
-<div class="bloque sigue">
-<div class="titulo">SIGUE</div>
-<div id="sigue"></div>
-</div>
-
-<div class="bloque prep">
-<div class="titulo">EN PREPARACIÓN</div>
-<div class="prep-content">
-<div id="prep"></div>
-</div>
-</div>
-
+  <div class="col">
+    <h2>SIGUE</h2>
+    <ul id="sigue"></ul>
+  </div>
 </div>
 
 <script>
+// ⚠️ PON AQUÍ TU ID
+const sheetID = "TU_ID_AQUI";
 
-const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
+// formato JSON público de Google Sheets
+const url = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv`;
 
-let eventos = [];
-let scrollY = 0;
-let velocidad = 0.4;
+async function cargarDatos() {
+  try {
+    const res = await fetch(url + "&t=" + new Date().getTime());
+    const data = await res.text();
 
-async function cargar(){
-  const res = await fetch(URL + "&t=" + Date.now());
-  const txt = await res.text();
+    const filas = data.split("\n").map(f => f.split(","));
 
-  const filas = txt.split("\n").map(f=>f.trim()).filter(f=>f);
+    let preparacion = [];
+    let escenario = [];
+    let sigue = [];
 
-  eventos = filas.map(f=>{
-    const c = f.split(",");
-    return {
-      inicio: c[0],
-      nombre: c.slice(2).join(",")
-    };
+    // ⚠️ ASUMIMOS:
+    // Columna 0 = Preparación
+    // Columna 1 = Escenario
+    // Columna 2 = Sigue
+
+    filas.slice(1).forEach(f => {
+      if (f[0]) preparacion.push(f[0]);
+      if (f[1]) escenario.push(f[1]);
+      if (f[2]) sigue.push(f[2]);
+    });
+
+    // 🔥 MOSTRAR EN CURSO (primer elemento de escenario)
+    document.getElementById("enCurso").innerText = escenario[0] || "SIN ACTIVIDAD";
+
+    // LISTAS
+    pintarLista("preparacion", preparacion);
+    pintarLista("escenario", escenario);
+    pintarLista("sigue", sigue);
+
+  } catch (e) {
+    console.error("Error cargando datos", e);
+  }
+}
+
+function pintarLista(id, datos) {
+  const ul = document.getElementById(id);
+  ul.innerHTML = "";
+  datos.forEach(d => {
+    const li = document.createElement("li");
+    li.textContent = d;
+    ul.appendChild(li);
   });
 }
 
-function horaAminutos(h){
-  const [hh,mm] = h.split(":").map(Number);
-  return hh*60 + mm;
-}
+// 🔄 refresca cada 10 segundos
+setInterval(cargarDatos, 10000);
 
-function reloj(){
-  document.getElementById("reloj").innerText =
-    new Date().toLocaleTimeString("es-CL");
-}
-
-function render(){
-  const now = new Date();
-  const minutos = now.getHours()*60 + now.getMinutes();
-
-  eventos.sort((a,b)=>horaAminutos(a.inicio)-horaAminutos(b.inicio));
-
-  let actuales = [];
-  let futuros = [];
-
-  eventos.forEach(e=>{
-    let ini = horaAminutos(e.inicio);
-    let fin = ini + 15; // duración por defecto
-
-    if(minutos >= ini && minutos < fin) actuales.push(e);
-    if(minutos < ini) futuros.push(e);
-  });
-
-  // EN ESCENARIO
-  document.getElementById("ahora").innerHTML =
-    actuales.length
-      ? `<div class="item">${actuales[0].nombre}<div class="hora">${actuales[0].inicio}</div></div>`
-      : "SIN ACTIVIDAD";
-
-  // SIGUE
-  document.getElementById("sigue").innerHTML =
-    futuros[0]
-      ? `<div class="item">${futuros[0].nombre}<div class="hora">${futuros[0].inicio}</div></div>`
-      : "—";
-
-  // PREPARACIÓN (scroll)
-  let lista = futuros.slice(1);
-
-  let html = lista.map(e=>`
-    <div class="item">${e.nombre}<div class="hora">${e.inicio}</div></div>
-  `).join("");
-
-  document.getElementById("prep").innerHTML =
-    `<div class="scroll-content">${html}${html}</div>`;
-
-  scrollY = 0;
-}
-
-function scroll(){
-  const cont = document.querySelector(".scroll-content");
-  if(!cont){
-    requestAnimationFrame(scroll);
-    return;
-  }
-
-  scrollY += velocidad;
-
-  if(scrollY >= cont.scrollHeight / 2){
-    scrollY -= cont.scrollHeight / 2;
-  }
-
-  cont.style.transform = `translateY(-${scrollY}px)`;
-
-  requestAnimationFrame(scroll);
-}
-
-async function init(){
-  await cargar();
-  render();
-  scroll();
-}
-
-setInterval(reloj,1000);
-
-// 🔥 IMPORTANTE: ahora sí re-renderiza
-setInterval(async ()=>{
-  await cargar();
-  render();
-}, 30000);
-
-init();
-
+// primera carga
+cargarDatos();
 </script>
 
 </body>
