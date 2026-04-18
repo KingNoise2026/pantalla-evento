@@ -106,36 +106,43 @@ body {
 
 <script>
 
-// 🔥 URL JSON (MUCHO MÁS ESTABLE)
-const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/gviz/tq?tqx=out:json";
+// 🔥 TU LINK CSV (correcto)
+const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
 
 const DURACION_DEFAULT = 15;
 let eventos = [];
 
-// 🔥 CARGA DESDE GOOGLE (JSON)
+// 🔥 CARGA ROBUSTA
 async function cargarEventos(){
   try {
-    const res = await fetch(BASE_URL + "&t=" + Date.now(), { cache: "no-store" });
+    const res = await fetch(BASE_URL + "&v=" + Date.now(), {
+      method: "GET",
+      mode: "cors"
+    });
+
+    if (!res.ok) throw new Error("Respuesta no válida");
+
     const text = await res.text();
 
-    const json = JSON.parse(text.substring(47).slice(0, -2));
-    const rows = json.table.rows;
+    if (!text || text.length < 10) throw new Error("CSV vacío");
 
-    const data = rows.map(r => {
-      const c = r.c;
+    const filas = text.split(/\r?\n/).filter(f => f.trim());
+
+    const data = filas.map(f=>{
+      const columnas = f.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
 
       return {
-        inicio: c[0]?.v || "",
-        fin: c[1]?.v || null,
-        nombre: c[2]?.v || ""
+        inicio: columnas[0]?.replace(/"/g,"").trim(),
+        fin: columnas[1]?.replace(/"/g,"").trim() || null,
+        nombre: columnas.slice(2).join(",").replace(/"/g,"").trim()
       };
-    }).filter(e => e.inicio && e.nombre);
+    }).filter(e => e && e.inicio && e.nombre);
 
     document.getElementById("status").innerText = "🟢 Conectado";
     return data;
 
   } catch(e){
-    console.error("Error JSON:", e);
+    console.error("Error real:", e);
     document.getElementById("status").innerText = "🔴 Sin conexión";
     return eventos;
   }
@@ -198,13 +205,13 @@ function actualizar(){
   }
 }
 
-// 🔄 manual
+// manual
 async function forzarUpdate(){
   eventos = await cargarEventos();
   actualizar();
 }
 
-// 🚀 inicio
+// inicio
 async function init(){
   eventos = await cargarEventos();
   actualizar();
@@ -213,7 +220,7 @@ async function init(){
 // reloj
 setInterval(actualizar, 1000);
 
-// refresh datos
+// refresco datos
 setInterval(async ()=>{
   eventos = await cargarEventos();
 }, 5000);
