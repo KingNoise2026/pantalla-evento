@@ -14,7 +14,7 @@ body {
 }
 
 .reloj {
-  font-size:100px;
+  font-size:90px;
   font-weight:bold;
 }
 
@@ -31,7 +31,6 @@ body {
 .ahora { background:#8B0000; }
 .sigue { background:#B8860B; }
 
-/* 🔥 ZONA SCROLL */
 .prep {
   background:#1E3A8A;
   overflow:hidden;
@@ -50,32 +49,12 @@ body {
   100% { transform: translateY(-50%); }
 }
 
-.item { font-size:50px; margin:15px 0; }
+.item { font-size:48px; margin:12px 0; }
 
 .hora {
-  font-size:40px;
+  font-size:36px;
   color:#ccc;
   display:block;
-}
-
-.progress {
-  width:80%;
-  height:15px;
-  background:#333;
-  margin:10px auto;
-  border-radius:10px;
-  overflow:hidden;
-}
-
-.progress-bar {
-  height:100%;
-  background:#00ff88;
-  width:0%;
-}
-
-.countdown {
-  font-size:30px;
-  color:#00ff88;
 }
 
 .status {
@@ -99,8 +78,6 @@ body {
 <div class="bloque ahora">
 <div class="titulo">EN ESCENARIO AHORA</div>
 <div id="ahora"></div>
-<div class="progress"><div class="progress-bar" id="barra"></div></div>
-<div class="countdown" id="countdown"></div>
 </div>
 
 <div class="bloque sigue">
@@ -119,7 +96,6 @@ body {
 
 const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRXSQ0Bf9eS1DVIQ6yOmRTRio3Nx7yIZGbOLTmGL0JzI3XCiZeVvaQW4W222iY-W8dNV/pub?output=csv";
 
-const DURACION_DEFAULT = 15;
 let eventos = [];
 
 async function cargarEventos(){
@@ -127,17 +103,22 @@ async function cargarEventos(){
     const res = await fetch(BASE_URL + "&v=" + Date.now());
     const text = await res.text();
 
-    const filas = text.split(/\r?\n/).filter(f => f.trim());
+    // 🔥 PARSEO CORREGIDO
+    const filas = text
+      .replace(/\r/g, "")
+      .split("\n")
+      .map(f => f.trim())
+      .filter(f => f.length > 3);
 
     const data = filas.map(f=>{
-      const columnas = f.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+      const columnas = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
       return {
         inicio: columnas[0]?.replace(/"/g,"").trim(),
         fin: columnas[1]?.replace(/"/g,"").trim() || null,
         nombre: columnas.slice(2).join(",").replace(/"/g,"").trim()
       };
-    }).filter(e => e && e.inicio && e.nombre);
+    }).filter(e => e.inicio && e.nombre);
 
     document.getElementById("status").innerText = "🟢 Conectado";
     return data;
@@ -153,16 +134,6 @@ function horaAminutos(h){
   return hh*60+mm;
 }
 
-function obtenerFin(e){
-  return e.fin ? horaAminutos(e.fin) : horaAminutos(e.inicio)+DURACION_DEFAULT;
-}
-
-function formatoHora(e){
-  if(e.fin) return `${e.inicio} - ${e.fin}`;
-  let f = obtenerFin(e);
-  return `${e.inicio} - ${String(Math.floor(f/60)).padStart(2,"0")}:${String(f%60).padStart(2,"0")}`;
-}
-
 function actualizar(){
   const now = new Date();
   const minutos = now.getHours()*60 + now.getMinutes();
@@ -176,48 +147,36 @@ function actualizar(){
 
   eventos.forEach(e=>{
     let ini = horaAminutos(e.inicio);
-    let fin = obtenerFin(e);
+    let fin = e.fin ? horaAminutos(e.fin) : ini+15;
 
     if(minutos>=ini && minutos<=fin) actuales.push(e);
     if(minutos<ini) futuros.push(e);
   });
 
   document.getElementById("ahora").innerHTML =
-    actuales.map(e=>`<div class="item">${e.nombre}<span class="hora">${formatoHora(e)}</span></div>`).join("") || "SIN ACTIVIDAD";
+    actuales.map(e=>`<div class="item">${e.nombre}<span class="hora">${e.inicio}</span></div>`).join("") || "SIN ACTIVIDAD";
 
   document.getElementById("sigue").innerHTML =
-    futuros[0] ? `<div class="item">${futuros[0].nombre}<span class="hora">${formatoHora(futuros[0])}</span></div>` : "—";
+    futuros[0] ? `<div class="item">${futuros[0].nombre}<span class="hora">${futuros[0].inicio}</span></div>` : "—";
 
-  // 🔥 SCROLL AUTOMÁTICO
+  // 🔥 SCROLL COMPLETO
   let lista = futuros.slice(1);
+
+  if(lista.length < 5){
+    lista = [...lista, ...lista, ...lista];
+  }
 
   let html = lista.map(e=>`
     <div class="item">${e.nombre}
-      <span class="hora">${formatoHora(e)}</span>
+      <span class="hora">${e.inicio}</span>
     </div>
   `).join("");
 
-  // duplicar contenido para loop infinito suave
   document.getElementById("prep").innerHTML =
-    `<div class="scroll-content">${html + html}</div>`;
+    `<div class="scroll-content">${html}</div>`;
 
-  // velocidad según cantidad
-  const duracion = Math.max(10, lista.length * 3);
+  const duracion = Math.max(10, lista.length * 2);
   document.querySelector(".scroll-content").style.animationDuration = duracion + "s";
-
-  // barra progreso
-  if(actuales[0]){
-    let ini = horaAminutos(actuales[0].inicio);
-    let fin = obtenerFin(actuales[0]);
-
-    let porcentaje = ((minutos-ini)/(fin-ini))*100;
-
-    document.getElementById("barra").style.width =
-      Math.max(0, Math.min(100, porcentaje)) + "%";
-
-    document.getElementById("countdown").innerText =
-      "Termina en " + Math.max(0,(fin-minutos)) + " min";
-  }
 }
 
 async function init(){
