@@ -38,7 +38,6 @@ body {
 .hora { font-size:26px; color:#ccc; }
 
 .titulo { font-size:32px; font-weight:bold; }
-
 </style>
 </head>
 
@@ -83,8 +82,16 @@ async function cargar(){
 
   eventos = filas.map(f=>{
     const c = f.split(",");
-    return {inicio:c[0], nombre:c.slice(2).join(",")}
+    return {
+      inicio: c[0],
+      nombre: c.slice(2).join(",")
+    };
   });
+}
+
+function horaAminutos(h){
+  const [hh,mm] = h.split(":").map(Number);
+  return hh*60 + mm;
 }
 
 function reloj(){
@@ -93,15 +100,45 @@ function reloj(){
 }
 
 function render(){
-  const futuros = eventos;
+  const now = new Date();
+  const minutos = now.getHours()*60 + now.getMinutes();
 
-  let html = futuros.map(e=>`
+  eventos.sort((a,b)=>horaAminutos(a.inicio)-horaAminutos(b.inicio));
+
+  let actuales = [];
+  let futuros = [];
+
+  eventos.forEach(e=>{
+    let ini = horaAminutos(e.inicio);
+    let fin = ini + 15; // duración por defecto
+
+    if(minutos >= ini && minutos < fin) actuales.push(e);
+    if(minutos < ini) futuros.push(e);
+  });
+
+  // EN ESCENARIO
+  document.getElementById("ahora").innerHTML =
+    actuales.length
+      ? `<div class="item">${actuales[0].nombre}<div class="hora">${actuales[0].inicio}</div></div>`
+      : "SIN ACTIVIDAD";
+
+  // SIGUE
+  document.getElementById("sigue").innerHTML =
+    futuros[0]
+      ? `<div class="item">${futuros[0].nombre}<div class="hora">${futuros[0].inicio}</div></div>`
+      : "—";
+
+  // PREPARACIÓN (scroll)
+  let lista = futuros.slice(1);
+
+  let html = lista.map(e=>`
     <div class="item">${e.nombre}<div class="hora">${e.inicio}</div></div>
   `).join("");
 
-  // 🔥 duplicación perfecta
   document.getElementById("prep").innerHTML =
     `<div class="scroll-content">${html}${html}</div>`;
+
+  scrollY = 0;
 }
 
 function scroll(){
@@ -114,7 +151,7 @@ function scroll(){
   scrollY += velocidad;
 
   if(scrollY >= cont.scrollHeight / 2){
-    scrollY -= cont.scrollHeight / 2; // 🔥 mejor que reset a 0
+    scrollY -= cont.scrollHeight / 2;
   }
 
   cont.style.transform = `translateY(-${scrollY}px)`;
@@ -129,7 +166,12 @@ async function init(){
 }
 
 setInterval(reloj,1000);
-setInterval(cargar,30000);
+
+// 🔥 IMPORTANTE: ahora sí re-renderiza
+setInterval(async ()=>{
+  await cargar();
+  render();
+}, 30000);
 
 init();
 
