@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Pantalla Evento PRO</title>
 
-<!-- 🔥 anti cache -->
+<!-- anti cache -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -16,31 +16,51 @@ body {
   color:#fff;
   font-family: Arial, sans-serif;
   text-align:center;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
 }
 
 .reloj {
-  font-size:90px;
+  font-size:70px;
   font-weight:bold;
+  margin:10px 0;
 }
 
 .container {
   display:flex;
   flex-direction:column;
-  height:85vh;
+  flex:1;
 }
 
-.bloque { padding:20px; }
+.bloque {
+  padding:15px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
 
-.titulo { font-size:45px; margin-bottom:10px; }
+.titulo {
+  font-size:35px;
+  margin-bottom:5px;
+}
 
-.ahora { background:#8B0000; }
-.sigue { background:#B8860B; }
+/* 🔥 proporciones dinámicas */
+.ahora {
+  background:#8B0000;
+  flex:1;
+}
+
+.sigue {
+  background:#B8860B;
+  flex:0.8;
+}
 
 .prep {
   background:#1E3A8A;
+  flex:1.2;
   overflow:hidden;
   position:relative;
-  height:35vh;
 }
 
 .scroll-content {
@@ -50,12 +70,12 @@ body {
 }
 
 .item {
-  font-size:48px;
-  margin:12px 0;
+  font-size:40px;
+  margin:8px 0;
 }
 
 .hora {
-  font-size:36px;
+  font-size:28px;
   color:#ccc;
   display:block;
 }
@@ -101,7 +121,7 @@ const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRX
 let eventos = [];
 let indexScroll = 0;
 
-// 🔥 cargar datos
+// cargar datos
 async function cargarEventos(){
   try {
     const res = await fetch(BASE_URL + "&v=" + Date.now());
@@ -132,20 +152,19 @@ async function cargarEventos(){
   }
 }
 
-// utilidades
 function horaAminutos(h){
   const [hh,mm]=h.split(":").map(Number);
   return hh*60+mm;
 }
 
-// 🔥 SOLO RELOJ (independiente)
+// reloj independiente
 function actualizarReloj(){
   const now = new Date();
   document.getElementById("reloj").innerText =
     now.toLocaleTimeString("es-CL");
 }
 
-// render (NO cada segundo)
+// render
 function actualizar(){
   const now = new Date();
   const minutos = now.getHours()*60 + now.getMinutes();
@@ -179,11 +198,10 @@ function actualizar(){
   document.getElementById("prep").innerHTML =
     `<div class="scroll-content">${html}</div>`;
 
-  // 🔥 RESET SCROLL CUANDO CAMBIAN DATOS
   indexScroll = 0;
 }
 
-// 🔥 scroll por pasos (estable)
+// scroll por pasos
 function scrollPorPasos(){
   const cont = document.querySelector(".scroll-content");
   if(!cont) return;
@@ -194,30 +212,27 @@ function scrollPorPasos(){
   indexScroll++;
   if(indexScroll >= items.length) indexScroll = 0;
 
-  const altura = items[0].offsetHeight + 12;
+  const altura = items[0].offsetHeight + 8;
 
   cont.style.transform = `translateY(-${indexScroll * altura}px)`;
 }
 
-// 🚀 inicio
+// inicio
 async function init(){
   eventos = await cargarEventos();
   actualizar();
 }
 
-// reloj SIEMPRE fluido
 setInterval(actualizarReloj, 1000);
 
-// datos + render
 setInterval(async ()=>{
   eventos = await cargarEventos();
   actualizar();
 }, 10000);
 
-// scroll lento y legible
 setInterval(scrollPorPasos, 4000);
 
-// 🔥 AUTO REFRESH (anti cache real)
+// auto refresh
 setInterval(() => {
   location.reload();
 }, 60000);
