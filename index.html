@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <title>Pantalla Evento PRO</title>
 
+<!-- 🔥 anti cache -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <style>
 body {
   margin:0;
@@ -96,6 +101,7 @@ const BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRbNs0WU7BmaRX
 let eventos = [];
 let indexScroll = 0;
 
+// 🔥 cargar datos
 async function cargarEventos(){
   try {
     const res = await fetch(BASE_URL + "&v=" + Date.now());
@@ -126,17 +132,23 @@ async function cargarEventos(){
   }
 }
 
+// utilidades
 function horaAminutos(h){
   const [hh,mm]=h.split(":").map(Number);
   return hh*60+mm;
 }
 
+// 🔥 SOLO RELOJ (independiente)
+function actualizarReloj(){
+  const now = new Date();
+  document.getElementById("reloj").innerText =
+    now.toLocaleTimeString("es-CL");
+}
+
+// render (NO cada segundo)
 function actualizar(){
   const now = new Date();
   const minutos = now.getHours()*60 + now.getMinutes();
-
-  document.getElementById("reloj").innerText =
-    now.toLocaleTimeString("es-CL");
 
   eventos.sort((a,b)=>horaAminutos(a.inicio)-horaAminutos(b.inicio));
 
@@ -156,7 +168,6 @@ function actualizar(){
   document.getElementById("sigue").innerHTML =
     futuros[0] ? `<div class="item">${futuros[0].nombre}<span class="hora">${futuros[0].inicio}</span></div>` : "—";
 
-  // 🔥 LISTA PREP
   let lista = futuros.slice(1);
 
   let html = lista.map(e=>`
@@ -167,9 +178,12 @@ function actualizar(){
 
   document.getElementById("prep").innerHTML =
     `<div class="scroll-content">${html}</div>`;
+
+  // 🔥 RESET SCROLL CUANDO CAMBIAN DATOS
+  indexScroll = 0;
 }
 
-// 🔥 SCROLL POR PASOS (PRO)
+// 🔥 scroll por pasos (estable)
 function scrollPorPasos(){
   const cont = document.querySelector(".scroll-content");
   if(!cont) return;
@@ -185,22 +199,28 @@ function scrollPorPasos(){
   cont.style.transform = `translateY(-${indexScroll * altura}px)`;
 }
 
-// 🚀 INICIO
+// 🚀 inicio
 async function init(){
   eventos = await cargarEventos();
   actualizar();
 }
 
-// reloj
-setInterval(actualizar, 1000);
+// reloj SIEMPRE fluido
+setInterval(actualizarReloj, 1000);
 
-// refresh datos
+// datos + render
 setInterval(async ()=>{
   eventos = await cargarEventos();
+  actualizar();
 }, 10000);
 
-// scroll cada 3 segundos
-setInterval(scrollPorPasos, 3000);
+// scroll lento y legible
+setInterval(scrollPorPasos, 4000);
+
+// 🔥 AUTO REFRESH (anti cache real)
+setInterval(() => {
+  location.reload();
+}, 60000);
 
 init();
 
